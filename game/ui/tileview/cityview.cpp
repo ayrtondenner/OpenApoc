@@ -3796,39 +3796,40 @@ bool CityView::handleMouseDown(Event *e)
 					           (int)scenery->type->tube[3], (int)scenery->type->tube[4],
 					           (int)scenery->type->tube[5]);
 					auto &map = *state->current_city->map;
-					for (auto &p : scenery->supportedBy)
+					for (auto &supportedBy : scenery->supportedBy)
 					{
-						debug += format("\nCan be supported by %s", p);
+						debug += format("\nCan be supported by %s", supportedBy);
 					}
-					for (auto &p : scenery->supportedParts)
+					for (auto &supportedPart : scenery->supportedParts)
 					{
-						debug += format("\nSupports %s", p);
+						debug += format("\nSupports %s", supportedPart);
 					}
-					for (int x = currentPosition.x - 1; x <= currentPosition.x + 1; x++)
+					for (auto x = currentPosition.x - 1; x <= currentPosition.x + 1; x++)
 					{
-						for (int y = currentPosition.y - 1; y <= currentPosition.y + 1; y++)
+						for (auto y = currentPosition.y - 1; y <= currentPosition.y + 1; y++)
 						{
-							for (int z = currentPosition.z - 1; z <= currentPosition.z + 1; z++)
+							for (auto z = currentPosition.z - 1; z <= currentPosition.z + 1; z++)
 							{
 								if (x < 0 || x >= map.size.x || y < 0 || y >= map.size.y || z < 0 ||
 								    z >= map.size.z)
 								{
 									continue;
 								}
-								auto tile2 = map.getTile(x, y, z);
-								for (auto &o2 : tile2->ownedObjects)
+								auto mapTile = map.getTile(x, y, z);
+								for (auto &ownedObject : mapTile->ownedObjects)
 								{
-									if (o2->getType() == TileObject::Type::Scenery)
+									if (ownedObject->getType() == TileObject::Type::Scenery)
 									{
-										auto mp2 = std::static_pointer_cast<TileObjectScenery>(o2)
-										               ->getOwner();
-										for (auto &p : mp2->supportedParts)
+										auto ownerScenery =
+										    std::static_pointer_cast<TileObjectScenery>(ownedObject)
+										        ->getOwner();
+										for (auto &supportedPart : ownerScenery->supportedParts)
 										{
-											if (p == currentPosition)
+											if (supportedPart == currentPosition)
 											{
 												debug += format(
 												    "\nActually supported by %s at %d %d %d",
-												    mp2->type.id, x - currentPosition.x,
+												    ownerScenery->type.id, x - currentPosition.x,
 												    y - currentPosition.y, z - currentPosition.z);
 											}
 										}
@@ -3858,13 +3859,13 @@ bool CityView::handleMouseDown(Event *e)
 					vehicle =
 					    std::dynamic_pointer_cast<TileObjectVehicle>(collision.obj)->getVehicle();
 					LogWarning("CLICKED VEHICLE %s at %s", vehicle->name, vehicle->position);
-					for (auto &m : vehicle->missions)
+					for (auto &mission : vehicle->missions)
 					{
-						LogWarning("Mission %s", m.getName());
+						LogWarning("Mission %s", mission.getName());
 					}
-					for (auto &c : vehicle->cargo)
+					for (auto &cargo : vehicle->cargo)
 					{
-						LogInfo("Cargo %sx%d", c.id, c.count);
+						LogInfo("Cargo %sx%d", cargo.id, cargo.count);
 					}
 					if (modifierLAlt && modifierLCtrl && modifierLShift)
 					{
@@ -3907,13 +3908,13 @@ bool CityView::handleMouseDown(Event *e)
 					              ->getVehicle();
 					LogWarning("SECONDARY CLICK ON VEHICLE %s at %s", vehicle->name,
 					           vehicle->position);
-					for (auto &m : vehicle->missions)
+					for (auto &mission : vehicle->missions)
 					{
-						LogWarning("Mission %s", m.getName());
+						LogWarning("Mission %s", mission.getName());
 					}
-					for (auto &c : vehicle->cargo)
+					for (auto &cargo : vehicle->cargo)
 					{
-						LogInfo("Cargo %sx%d", c.id, c.count);
+						LogInfo("Cargo %sx%d", cargo.id, cargo.count);
 					}
 				}
 			}
