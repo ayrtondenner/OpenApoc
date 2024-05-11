@@ -1035,21 +1035,13 @@ Reachability VehicleTargetHelper::isReachableTargetGround(const Vehicle &v, Vec3
 	return Reachability::BlockedByScenery;
 }
 
-bool VehicleMission::takeOffCheck(GameState &state, Vehicle &v)
+bool VehicleMission::takeOffCheck(GameState &state, Vehicle &vehicle)
 {
-	if (!v.tileObject)
-	{
-		if (v.currentBuilding)
-		{
-			v.addMission(state, VehicleMission::takeOff(v));
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	return false;
+	if (vehicle.tileObject || !vehicle.currentBuilding)
+		return false;
+
+	vehicle.addMission(state, VehicleMission::takeOff(vehicle));
+	return true;
 }
 
 bool VehicleMission::teleportCheck(GameState &state, Vehicle &v)
@@ -2111,10 +2103,7 @@ void VehicleMission::start(GameState &state, Vehicle &v)
 				}
 			}
 			// Leave building
-			if (takeOffCheck(state, v))
-			{
-				return;
-			}
+			takeOffCheck(state, v);
 			// Actually go there
 			auto vehicleTile = v.tileObject;
 			if (v.type->isGround())
