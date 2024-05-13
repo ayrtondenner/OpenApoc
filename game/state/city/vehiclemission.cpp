@@ -2000,22 +2000,19 @@ void VehicleMission::start(GameState &state, Vehicle &v)
 					return;
 				}
 			}
-			if (takeOffCheck(state, v))
+
+			takeOffCheck(state, v);
+
+			if (this->currentPlannedPath.empty())
 			{
-				return;
+				std::uniform_int_distribution<int> xPos(targetBuilding->bounds.p0.x - 5,
+				                                        targetBuilding->bounds.p1.x + 5);
+				std::uniform_int_distribution<int> yPos(targetBuilding->bounds.p0.y - 5,
+				                                        targetBuilding->bounds.p1.y + 5);
+				setPathTo(state, v, v.getPreferredPosition(xPos(state.rng), yPos(state.rng)),
+				          getDefaultIterationCount(v));
 			}
-			else
-			{
-				if (this->currentPlannedPath.empty())
-				{
-					std::uniform_int_distribution<int> xPos(targetBuilding->bounds.p0.x - 5,
-					                                        targetBuilding->bounds.p1.x + 5);
-					std::uniform_int_distribution<int> yPos(targetBuilding->bounds.p0.y - 5,
-					                                        targetBuilding->bounds.p1.y + 5);
-					setPathTo(state, v, v.getPreferredPosition(xPos(state.rng), yPos(state.rng)),
-					          getDefaultIterationCount(v));
-				}
-			}
+
 			return;
 		}
 		case MissionType::Crash:
@@ -2111,12 +2108,14 @@ void VehicleMission::start(GameState &state, Vehicle &v)
 				}
 			}
 			// Leave building
-			if (takeOffCheck(state, v))
-			{
-				return;
-			}
+			auto takeOffCheckResult = takeOffCheck(state, v);
+
 			// Actually go there
 			auto vehicleTile = v.tileObject;
+
+			if (takeOffCheckResult && !vehicleTile)
+				return;
+
 			if (v.type->isGround())
 			{
 				/* Am I already in a car depot? If so land */
