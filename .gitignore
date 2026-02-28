@@ -163,3 +163,9 @@ vcpkg_installed/
 
 # Claude Code
 .claude/
+
+# Discord exports (local data, not for git)
+discord-exports/
+
+# Personal working files
+scratch/
