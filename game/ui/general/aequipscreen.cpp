@@ -21,6 +21,7 @@
 #include "game/state/city/city.h"
 #include "game/state/city/vehicle.h"
 #include "game/state/gamestate.h"
+#include "game/state/rules/city/ufopaedia.h"
 #include "game/state/shared/aequipment.h"
 #include "game/state/shared/agent.h"
 #include "game/state/tilemap/tileobject_battleunit.h"
@@ -30,6 +31,7 @@
 #include "game/ui/general/aequipmentsheet.h"
 #include "game/ui/general/agentsheet.h"
 #include "game/ui/general/messagebox.h"
+#include "game/ui/ufopaedia/ufopaediacategoryview.h"
 #include <boost/algorithm/string/join.hpp>
 
 namespace OpenApoc
@@ -443,16 +445,86 @@ void AEquipScreen::eventOccurred(Event *e)
 	// Item manipulation
 	if (currentAgent->type->inventory && getMode() != Mode::Enemy)
 	{
-		// Picking up items
-		if (e->type() == EVENT_MOUSE_DOWN && !this->draggedEquipment)
+		// Picking up items (left-click)
+		if (e->type() == EVENT_MOUSE_DOWN && !this->draggedEquipment &&
+		    Event::isPressed(e->mouse().Button, Event::MouseButton::Left))
 		{
 			handleItemPickup({e->mouse().X, e->mouse().Y});
 		}
 
-		// Placing items
-		if (e->type() == EVENT_MOUSE_UP && draggedEquipment)
+		// Placing items (left-click)
+		if (e->type() == EVENT_MOUSE_UP && draggedEquipment &&
+		    Event::isPressed(e->mouse().Button, Event::MouseButton::Left))
 		{
 			handleItemPlacement({e->mouse().X, e->mouse().Y});
+		}
+
+		// Right-click: open UFOpaedia entry for the item under cursor
+		if (e->type() == EVENT_MOUSE_DOWN && !this->draggedEquipment &&
+		    Event::isPressed(e->mouse().Button, Event::MouseButton::Right))
+		{
+			Vec2<int> mousePos{e->mouse().X, e->mouse().Y};
+			sp<AEquipment> clickedItem;
+
+			// Check if we're over any equipment in the paper doll
+			auto mouseSlotPos = this->paperDoll->getSlotPositionFromScreenPosition(mousePos);
+			auto equipment =
+			    std::dynamic_pointer_cast<AEquipment>(currentAgent->getEquipmentAt(mouseSlotPos));
+			if (equipment)
+			{
+				clickedItem = equipment;
+			}
+			else
+			{
+				// Check if we're over any equipment in the inventory bar
+				auto posWithinInventory = mousePos;
+				posWithinInventory.x += inventoryPage * inventoryControl->Size.x;
+				for (auto &tuple : this->inventoryItems)
+				{
+					if (std::get<0>(tuple).within(posWithinInventory))
+					{
+						auto pos = std::get<0>(tuple).p0;
+						pos.x -= inventoryPage * inventoryControl->Size.x;
+						if (pos.x >= inventoryControl->Location.x + formMain->Location.x &&
+						    pos.x < inventoryControl->Location.x + inventoryControl->Size.x +
+						                formMain->Location.x)
+						{
+							clickedItem = std::get<2>(tuple);
+						}
+						break;
+					}
+				}
+			}
+
+			if (clickedItem)
+			{
+				const auto &itemTypeId = clickedItem->type.id;
+				sp<UfopaediaCategory> ufopaediaCategory;
+				sp<UfopaediaEntry> ufopaediaEntry;
+				for (auto &cat : state->ufopaedia)
+				{
+					for (auto &entry : cat.second->entries)
+					{
+						if (entry.second->data_type == UfopaediaEntry::Data::Equipment &&
+						    entry.second->data_id == itemTypeId)
+						{
+							ufopaediaEntry = entry.second;
+							ufopaediaCategory = cat.second;
+							break;
+						}
+					}
+					if (ufopaediaCategory)
+					{
+						break;
+					}
+				}
+				if (ufopaediaEntry && ufopaediaEntry->dependency.satisfied())
+				{
+					fw().stageQueueCommand(
+					    {StageCmd::Command::PUSH,
+					     mksp<UfopaediaCategoryView>(state, ufopaediaCategory, ufopaediaEntry)});
+				}
+			}
 		}
 	}
 }

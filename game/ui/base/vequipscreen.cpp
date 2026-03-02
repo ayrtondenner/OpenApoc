@@ -18,10 +18,12 @@
 #include "game/state/city/vehicle.h"
 #include "game/state/city/vequipment.h"
 #include "game/state/gamestate.h"
+#include "game/state/rules/city/ufopaedia.h"
 #include "game/state/rules/city/vehicletype.h"
 #include "game/ui/components/equipscreen.h"
 #include "game/ui/general/messagebox.h"
 #include "game/ui/general/vehiclesheet.h"
+#include "game/ui/ufopaedia/ufopaediacategoryview.h"
 #include "library/strings_format.h"
 
 namespace OpenApoc
@@ -281,8 +283,68 @@ void VEquipScreen::eventOccurred(Event *e)
 	// Find the base this vehicle is landed in
 	StateRef<Base> base = selected->currentBuilding ? selected->currentBuilding->base : nullptr;
 
+	// Right-click: open UFOpaedia entry for the item under cursor
+	if (e->type() == EVENT_MOUSE_DOWN &&
+	    Event::isPressed(e->mouse().Button, Event::MouseButton::Right) && !this->draggedEquipment)
+	{
+		Vec2<int> mousePos{e->mouse().X, e->mouse().Y};
+		StateRef<VEquipmentType> clickedType;
+
+		// Check if we're over any equipment in the paper doll
+		auto mouseSlotPos = this->paperDoll->getSlotPositionFromScreenPosition(mousePos);
+		auto equipment =
+		    std::dynamic_pointer_cast<VEquipment>(this->selected->getEquipmentAt(mouseSlotPos));
+		if (equipment)
+		{
+			clickedType = equipment->type;
+		}
+		else
+		{
+			// Check if we're over any equipment in the inventory bar
+			for (auto &pair : this->inventoryItems)
+			{
+				if (pair.first.within(mousePos))
+				{
+					clickedType = pair.second;
+					break;
+				}
+			}
+		}
+
+		if (clickedType)
+		{
+			sp<UfopaediaCategory> ufopaediaCategory;
+			sp<UfopaediaEntry> ufopaediaEntry;
+			for (auto &cat : state->ufopaedia)
+			{
+				for (auto &entry : cat.second->entries)
+				{
+					if (entry.second->data_type == UfopaediaEntry::Data::VehicleEquipment &&
+					    entry.second->data_id == clickedType.id)
+					{
+						ufopaediaEntry = entry.second;
+						ufopaediaCategory = cat.second;
+						break;
+					}
+				}
+				if (ufopaediaCategory)
+				{
+					break;
+				}
+			}
+			if (ufopaediaEntry && ufopaediaEntry->dependency.satisfied())
+			{
+				fw().stageQueueCommand(
+				    {StageCmd::Command::PUSH,
+				     mksp<UfopaediaCategoryView>(state, ufopaediaCategory, ufopaediaEntry)});
+			}
+		}
+		return;
+	}
+
 	// Only allow removing equipment if we're in a base, otherwise it'll disappear
-	if (e->type() == EVENT_MOUSE_DOWN && base)
+	if (e->type() == EVENT_MOUSE_DOWN &&
+	    Event::isPressed(e->mouse().Button, Event::MouseButton::Left) && base)
 	{
 		Vec2<int> mousePos{e->mouse().X, e->mouse().Y};
 
